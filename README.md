@@ -9,8 +9,9 @@ spool 174, meaning that one spool depleted while the other does not.
 This plugin ties the spool to the *tool* instead, using AFC, which OpenCreator already uses. This plugin will make sure that:
 
 - Each tool (AFC lane `extruder0` to `extruder3` for T0 to T3) keeps its own Spoolman spool ID, across restarts.
-- When a tool is picked up, AFC makes that tool's spool the active spool in Spoolman, so usage is booked on the
-  spool that is actually printing.
+- When a tool is picked up, at print start or at a tool change, that tool's spool becomes the active spool in
+  Spoolman, so usage is booked on the spool that is actually printing. AFC doesn't do this itself on the
+  Creator 5, so the plugin hooks into `C5_TOOL_SELECT`, the command every tool pickup goes through.
 - There are macros to assign, clear, activate and list spools per tool, and to turn the plugin's messages on and off.
 
 ## Install
@@ -84,9 +85,9 @@ the spools on the printer as in step 2, and put this in the filament start G-cod
 SPOOLMAN_ACTIVATE_TOOL
 ```
 
-This makes the printing tool's spool the active spool. AFC already does that when it picks up a tool, so this
-line only makes sure of it. If the tool has no spool assigned, you get a warning in the console and no spool is
-active, so the filament isn't booked on the wrong spool.
+This makes the printing tool's spool the active spool. The plugin already does that whenever a tool is picked
+up, so this line is optional and only makes sure of it. If the tool has no spool assigned, you get a warning in
+the console and no spool is active, so the filament isn't booked on the wrong spool.
 
 **B. One profile per spool** (a separate profile for the yellow and the blue spool):
 
@@ -145,6 +146,10 @@ Fluidd lists new macros under **Uncategorized**. To give the plugin's macros the
 Macros whose names start with `_`, like `_SPOOLMAN_PROBLEM`, are the plugin's helpers. Fluidd doesn't show
 them.
 
+`C5_TOOL_SELECT` also shows up under **Uncategorized** once the plugin is installed. It's OpenCreator's tool
+pickup command, which the plugin wraps to switch spools. Leave it where it is, or hide it the same way as
+`SPOOLMAN_ECHO`. It works the same either way.
+
 Fluidd saves these settings in Moonraker, so they apply in every browser and survive plugin updates. If Fluidd
 is open in another browser tab, reload that tab afterwards. Otherwise its next change to a macro setting can
 undo yours.
@@ -159,6 +164,7 @@ undo yours.
 | `SPOOLMAN_STATUS` | Shows the Spoolman server, each tool's spool, material and color, the active tool, and whether messages are on. |
 | `SPOOLMAN_ECHO MSG="..."` | Shows `MSG` while messages are on. |
 | `SPOOLMAN_ECHO_ON` / `SPOOLMAN_ECHO_OFF` | Turns the messages on or off. The setting is saved as `oc_spoolman_echo` in Klipper's saved variables. |
+| `C5_TOOL_SELECT T=<0-3>` | OpenCreator's tool pickup, wrapped by the plugin: after the pickup it makes that tool's spool the active spool. The original command is kept as `_OC_SPOOLMAN_TOOL_SELECT`. |
 
 AFC's own `SET_SPOOL_ID LANE=extruder1 SPOOL_ID=175` changes the same assignments, as does any AFC panel that
 sets a lane's spool.
@@ -218,12 +224,12 @@ Then, for every change you push to GitHub:
 
 ```sh
 cd /usr/data/localPluginTrials/OpenCreator-Plugin-Spoolman
+git fetch -p ## Fetch repo data, prune/purge branches which are deleted on origin
+git checkout <branch> ## Switch to a branch if need be
 git pull
 oc-plugin remove oc_spoolman_integration
 oc-plugin install /usr/data/localPluginTrials/OpenCreator-Plugin-Spoolman
 ```
-
-To work on a branch, run `git checkout <branch>` in that folder first.
 
 ### Notes
 
